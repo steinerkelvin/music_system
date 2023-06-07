@@ -1,0 +1,63 @@
+# music_system
+
+```elixir
+Mix.install([
+  {:jason, "~> 1.4"}
+])
+```
+
+## Env Vars
+
+```elixir
+:ok
+```
+
+```elixir
+defmodule Lastfm do
+  @base_url "http://ws.audioscrobbler.com/2.0/"
+
+  defmodule Client do
+    defstruct [:api_key, :api_secret]
+  end
+
+  def new(api_key, api_secret \\ nil), do: %Client{api_key: api_key, api_secret: api_secret}
+
+  def get_scrobbles(%Client{api_key: api_key} = _client, username, limit \\ 50, page \\ 1) do
+    {:ok, _} = Application.ensure_all_started(:inets)
+
+    params =
+      URI.encode_query(%{
+        "method" => "user.getRecentTracks",
+        "user" => username,
+        "api_key" => api_key,
+        "format" => "json",
+        "limit" => Integer.to_string(limit),
+        "page" => Integer.to_string(page)
+      })
+
+    url = "#{@base_url}?#{params}"
+
+    {:ok, {status, _headers, body}} = :httpc.request(:get, {url, []}, [], [])
+
+    if status == '200' do
+      {:ok, data} = Jason.decode(body)
+      data["recenttracks"]["track"]
+    else
+      {:error, body}
+    end
+  end
+end
+```
+
+```elixir
+api_key = System.get_env("LASTFM_API_KEY")
+api_secret = System.get_env("LASTFM_API_SECRET")
+lfm_client = Lastfm.new(api_key, api_secret)
+```
+
+```elixir
+lfm_user = "kelvinsteiner"
+Lastfm.get_scrobbles(lfm_client, lfm_user)
+```
+
+<!-- livebook:{"offset":1261,"stamp":{"token":"QTEyOEdDTQ.mUflwKhjohoCLqOrAGyuyXXz2msTGNN7wobv7TwiMbBSPAo4i55ePhYjwS0.tcB42TL9GshI6DVT.YbX_ODbBx5sWYT9YCvPfKx_7IUxtc14wLn1Aaq-Yu83sxRVSBLdf0HQ--SbGMm_mNlk6SKb1wpToAjy9yY1cFjppPUGZ716d.qsaLQhf3o8yKyi0UTTccVQ","version":1}} -->
